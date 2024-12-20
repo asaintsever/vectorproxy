@@ -1,0 +1,10 @@
+{"index":{"_index":"my_index","_id":"1"}}
+{"id":1,"name":"Document 1","content":"This is the content of document 1.","metadata":[{"author":"Author 1","length":100},{"author":"Author 2","length":100}]}
+{"index":{"_index":"my_index","_id":"2"}}
+{"id":2,"name":"Document 2","content":"This is the content of document 2.","metadata":[{"author":"Author 2","length":200}]}
+{"index":{"_index":"my_index","_id":"3"}}
+{"id":3,"name":"Document 3","content":"This is the content of document 3.","metadata":[{"author":"Author 3","length":300},{"author":"Author 4","length":300},{"author":"Author 5","length":300}]}
+{"index":{"_index":"my_index","_id":"4"}}
+{"id":4,"name":"Document 4","content":"This is the content of document 4.","metadata":[{"author":"Author 4","length":400},{"author":"Author 1","length":300}]}
+{"index":{"_index":"my_index","_id":"5"}}
+{"id":5,"name":"Document 5","content":"This is the content of document 5.","metadata":[{"author":"Author 5","length":500}]}
