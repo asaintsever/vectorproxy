@@ -1,3 +1,14 @@
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//	http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 package vectorization
 
 import (
@@ -8,8 +19,10 @@ import (
 	"os"
 	"strings"
 
+	"asaintsever/vectorproxy/config"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
@@ -37,7 +50,7 @@ func init() {
 		aws_region = defaultRegion
 	}
 
-	cfg, err := config.LoadDefaultConfig(context.Background(), config.WithRegion(aws_region))
+	cfg, err := awsconfig.LoadDefaultConfig(context.Background(), awsconfig.WithRegion(aws_region))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -45,19 +58,19 @@ func init() {
 	brc = bedrockruntime.NewFromConfig(cfg)
 }
 
-func vectorize(doc []byte, array []gjson.Result, path string) ([]byte, error) {
+func Vectorize(doc []byte, array []gjson.Result, path string) ([]byte, error) {
 	var err error
 	for value_indx, value := range array {
 		// Replace first '#' character found in path with value_indx as sjson does not support '#' syntax
 		fieldToVectorizePath := strings.Replace(path, "#", fmt.Sprintf("%d", value_indx), 1)
 
-		if dryRun {
+		if config.DryRun {
 			log.Printf("Value: %s [Path: %s]", value.String(), fieldToVectorizePath)
 		}
 
 		// Deal with nested arrays (e.g. with path like "indication_parents.#.indication_names.#.name")
 		if value.IsArray() {
-			doc, err = vectorize(doc, value.Array(), fieldToVectorizePath)
+			doc, err = Vectorize(doc, value.Array(), fieldToVectorizePath)
 			if err != nil {
 				return nil, err
 			}
@@ -86,8 +99,8 @@ func vectorize(doc []byte, array []gjson.Result, path string) ([]byte, error) {
 		// instead of using a struct and marshalling it to JSON as it is more efficient
 		bedrockPayload, _ := sjson.Set("", "inputText", value.String())
 
-		if titanEmbeddingModelID == "amazon.titan-embed-text-v2:0" {
-			bedrockPayload, _ = sjson.Set(bedrockPayload, "dimensions", embeddingsDimension)
+		if config.EmbeddingModelID == "amazon.titan-embed-text-v2:0" {
+			bedrockPayload, _ = sjson.Set(bedrockPayload, "dimensions", config.EmbeddingsDimension)
 		}
 
 		//-- Code below shows how to do the same using a struct and marshalling it to JSON
@@ -95,7 +108,7 @@ func vectorize(doc []byte, array []gjson.Result, path string) ([]byte, error) {
 		// 	InputText: value.String(),
 		// }
 
-		// if titanEmbeddingModelID == "amazon.titan-embed-text-v2:0" {
+		// if config.EmbeddingModelID == "amazon.titan-embed-text-v2:0" {
 		// 	bedrockPayload.Dimensions = embeddingsDimension
 		// }
 
@@ -106,7 +119,7 @@ func vectorize(doc []byte, array []gjson.Result, path string) ([]byte, error) {
 
 		output, err := brc.InvokeModel(context.Background(), &bedrockruntime.InvokeModelInput{
 			Body:        []byte(bedrockPayload),
-			ModelId:     aws.String(titanEmbeddingModelID),
+			ModelId:     aws.String(config.EmbeddingModelID),
 			ContentType: aws.String("application/json"),
 		})
 

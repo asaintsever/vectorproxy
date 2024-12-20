@@ -1,3 +1,14 @@
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//	http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 package stores
 
 import (
@@ -9,13 +20,16 @@ import (
 	"sync"
 	"time"
 
+	"asaintsever/vectorproxy/config"
+	"asaintsever/vectorproxy/vectorization"
+
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 	"golang.org/x/net/http2"
 )
 
-func openSearchBulkHandler(w http.ResponseWriter, r *http.Request) {
-	proxyURL := vectorStoreURL + r.RequestURI
+func OpenSearchBulkHandler(w http.ResponseWriter, r *http.Request) {
+	proxyURL := config.VectorStoreURL + r.RequestURI
 
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -40,7 +54,7 @@ func openSearchBulkHandler(w http.ResponseWriter, r *http.Request) {
 	var buffer bytes.Buffer
 	var wg sync.WaitGroup
 	var mu sync.Mutex
-	sem := make(chan struct{}, maxParallel)
+	sem := make(chan struct{}, config.MaxParallel)
 
 	for i := 0; i < len(documents); i += 2 {
 		// Skip empty lines
@@ -56,12 +70,12 @@ func openSearchBulkHandler(w http.ResponseWriter, r *http.Request) {
 		go func(metadata, doc []byte) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			for _, path := range gjsonPaths {
+			for _, path := range config.GjsonPaths {
 				// Extract the field using gjson
 				values := gjson.GetBytes(doc, path).Array()
 				if len(values) > 0 {
 					var err error
-					doc, err = vectorize(doc, values, path)
+					doc, err = vectorization.Vectorize(doc, values, path)
 					if err != nil {
 						// Only log the error as we don't want to stop the processing
 						// Ideally, we should store those errors and add them in the
@@ -98,7 +112,7 @@ func openSearchBulkHandler(w http.ResponseWriter, r *http.Request) {
 		for _, value := range values {
 			req.Header.Add(name, value)
 
-			if dryRun {
+			if config.DryRun {
 				if name == "Content-Type" || name == "Authorization" {
 					w.Header().Add(name, value)
 				}
@@ -106,7 +120,7 @@ func openSearchBulkHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if dryRun {
+	if config.DryRun {
 		log.Printf("Sending request to: %s", proxyURL)
 
 		// If dry-run is enabled, return the buffer without sending it
