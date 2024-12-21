@@ -44,8 +44,8 @@ To compute vectors from a [sample NDJSON file](./samples/opensearch/test.ndjson)
     vectp -embeddings-dimension 256 -gjson-paths content,metadata.#.author -dry-run
     ```
 
-    > [!NOTE]
-    > Here we ask the proxy to vectorize the `content` and `metadata.author` fields. The vectors are computed using the default embedding model and have a dimension of 256.
+> [!NOTE]
+> Here we ask the proxy to vectorize the `content` and `metadata.author` fields. The vectors are computed using the default embedding model and have a dimension of 256.
 
 - Then send the NDJSON data to the proxy, the same way as you would send it to Elasticsearch/OpenSearch (via Bulk API):
 
